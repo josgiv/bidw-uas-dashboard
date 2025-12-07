@@ -123,9 +123,9 @@ export function LandingPage() {
 
                     <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
                         {[
-                            { nim: "36230035", name: "JOSIA GIVEN SANTOSO", role: "Frontend & Data Integration" },
-                            { nim: "36230031", name: "LEON HIUNATA", role: "UI/UX Design & Analytics" },
-                            { nim: "36230037", name: "VINSENSIUS ERIK KIE", role: "Backend & Database Architecture" }
+                            { nim: "36230035", name: "JOSIA GIVEN SANTOSO", role: "" },
+                            { nim: "36230031", name: "LEON HIUNATA", role: "" },
+                            { nim: "36230037", name: "VINSENSIUS ERIK KIE", role: "" }
                         ].map((dev) => (
                             <Card key={dev.nim} className="hover:shadow-lg transition-shadow border-primary/20">
                                 <CardHeader>

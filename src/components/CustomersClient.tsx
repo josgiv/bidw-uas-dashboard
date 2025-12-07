@@ -18,7 +18,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { RetentionCohortChart } from "@/components/charts/RetentionCohortChart";
 
 interface CustomersClientProps {
     data: MasterRecord[];
@@ -126,12 +125,58 @@ export function CustomersClient({ data: allData }: CustomersClientProps) {
         .slice(0, 5);
 
     const genderRevenue = mainCustMap.reduce((acc, c) => {
-        const gender = c.gender === 'M' ? 'Male' : c.gender === 'F' ? 'Female' : 'Other';
+        // Handle different gender formats: 'MALE', 'FEMALE', 'M', 'F'
+        const g = c.gender?.toUpperCase() || '';
+        const gender = (g === 'MALE' || g === 'M') ? 'Male'
+            : (g === 'FEMALE' || g === 'F') ? 'Female'
+                : 'Unknown';
         acc[gender] = (acc[gender] || 0) + c.y;
         return acc;
     }, {} as Record<string, number>);
 
-    const genderData = Object.entries(genderRevenue).map(([name, value]) => ({ name, value }));
+    const genderData = Object.entries(genderRevenue)
+        .map(([name, value]) => ({ name, value }))
+        .filter(d => d.name !== 'Unknown' || d.value > 0)
+        .sort((a, b) => b.value - a.value);
+
+    // Marital Status breakdown
+    const maritalRevenue = mainCustMap.reduce((acc, c) => {
+        const status = c.gender; // Using placeholder, we need actual marital status
+        acc[status] = (acc[status] || 0) + c.y;
+        return acc;
+    }, {} as Record<string, number>);
+
+    // Customer Segments by spending tier
+    const avgValue = mainKPI.avgCustomerValue;
+    const segments = {
+        'VIP (2x+avg)': mainCustMap.filter(c => c.y >= avgValue * 2),
+        'High Value': mainCustMap.filter(c => c.y >= avgValue && c.y < avgValue * 2),
+        'Regular': mainCustMap.filter(c => c.y >= avgValue * 0.5 && c.y < avgValue),
+        'Low Value': mainCustMap.filter(c => c.y < avgValue * 0.5)
+    };
+
+    const segmentData = Object.entries(segments).map(([name, customers]) => ({
+        name,
+        value: customers.reduce((sum, c) => sum + c.y, 0),
+        count: customers.length
+    }));
+
+    // Order frequency distribution
+    const orderFrequency = mainCustMap.reduce((acc, c) => {
+        const freq = c.orders === 1 ? '1 Order'
+            : c.orders <= 3 ? '2-3 Orders'
+                : c.orders <= 5 ? '4-5 Orders'
+                    : '6+ Orders';
+        acc[freq] = (acc[freq] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const orderFreqData = Object.entries(orderFrequency)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => {
+            const order = ['1 Order', '2-3 Orders', '4-5 Orders', '6+ Orders'];
+            return order.indexOf(a.name) - order.indexOf(b.name);
+        });
 
     return (
         <div className="space-y-8">
@@ -199,8 +244,17 @@ export function CustomersClient({ data: allData }: CustomersClientProps) {
                 </div>
             </div>
 
-            {/* Cohort Analysis Section */}
-            <CohortAnalysisSection data={filteredData} />
+            {/* Additional Customer Analysis Charts */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <DynamicPieChart
+                    data={segmentData.map(s => ({ name: s.name, value: s.value }))}
+                    title="Revenue by Customer Segment"
+                />
+                <DynamicPieChart
+                    data={orderFreqData}
+                    title="Customer Order Frequency"
+                />
+            </div>
 
             <Card>
                 <CardHeader>
@@ -260,88 +314,6 @@ export function CustomersClient({ data: allData }: CustomersClientProps) {
                     </CardContent>
                 </Card>
             </div>
-        </div>
-    );
-}
-
-// Sub-component for strict isolation of heavy cohort logic
-function CohortAnalysisSection({ data }: { data: MasterRecord[] }) {
-    const cohortData = useMemo(() => {
-        // 1. Identify First Purchase Month for each distinct Customer
-        const firstPurchaseMap = new Map<string, Date>(); // CustomerId -> FirstDate
-
-        // Pre-sort by date to ensure we find the absolute first order easily? 
-        // Or just iterate. Data might not be sorted.
-        data.forEach(r => {
-            const d = new Date(r.dateStr);
-            if (!firstPurchaseMap.has(r.customerId)) {
-                firstPurchaseMap.set(r.customerId, d);
-            } else {
-                if (d < firstPurchaseMap.get(r.customerId)!) {
-                    firstPurchaseMap.set(r.customerId, d);
-                }
-            }
-        });
-
-        // 2. Assign each transaction to a (Cohort, MonthIndex) bucket
-        // Cohort = YYYY-MM of first purchase
-        // MonthIndex = Difference in months between transaction date and first purchase date
-
-        const buckets = new Map<string, Set<string>>(); // Key: "Cohort|MonthIndex" -> Set of CustomerIds (for unique count)
-        const cohortSizes = new Map<string, Set<string>>(); // Key: "Cohort" -> Set of CustomerIds (for sizing)
-
-        data.forEach(r => {
-            const firstDate = firstPurchaseMap.get(r.customerId);
-            if (!firstDate) return;
-
-            const txnDate = new Date(r.dateStr);
-
-            // Format Cohort Label: YYYY-MM
-            const cohortLabel = `${firstDate.getFullYear()}-${String(firstDate.getMonth() + 1).padStart(2, '0')}`;
-
-            // Calculate Month Difference
-            const monthDiff = (txnDate.getFullYear() - firstDate.getFullYear()) * 12 + (txnDate.getMonth() - firstDate.getMonth());
-
-            if (monthDiff < 0) return; // Should not happen if data is correct
-
-            // Add to Cohort Total Size
-            if (!cohortSizes.has(cohortLabel)) cohortSizes.set(cohortLabel, new Set());
-            cohortSizes.get(cohortLabel)!.add(r.customerId);
-
-            // Add to Bucket (Retention)
-            const key = `${cohortLabel}|${monthDiff}`;
-            if (!buckets.has(key)) buckets.set(key, new Set());
-            buckets.get(key)!.add(r.customerId);
-        });
-
-        // 3. Transform to Chart Data
-        const result: { cohort: string; monthIndex: number; retentionRate: number; originalSize: number }[] = [];
-
-        buckets.forEach((customerSet, key) => {
-            const [cohort, monthIndexStr] = key.split('|');
-            const monthIndex = parseInt(monthIndexStr);
-            const size = cohortSizes.get(cohort)?.size || 0;
-
-            if (size === 0) return;
-
-            const retentionRate = (customerSet.size / size) * 100;
-
-            result.push({
-                cohort,
-                monthIndex,
-                retentionRate,
-                originalSize: size
-            });
-        });
-
-        return result;
-    }, [data]);
-
-    if (cohortData.length === 0) return null;
-
-    return (
-        <div className="grid grid-cols-1">
-            <RetentionCohortChart data={cohortData} />
         </div>
     );
 }

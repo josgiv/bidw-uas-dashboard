@@ -1,9 +1,8 @@
 "use client";
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "next-themes";
-import { toast } from 'sonner';
 
 interface DynamicPieChartProps {
     data: { name: string; value: number }[];
@@ -11,83 +10,112 @@ interface DynamicPieChartProps {
     colors?: string[];
 }
 
-export const DynamicPieChart = ({ data, title = "Distribution", colors }: DynamicPieChartProps) => {
+export const DynamicPieChart = ({ data, title = "Distribution" }: DynamicPieChartProps) => {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
 
-    const onChartClick = (params: { name: string; value: number; percent: number }) => {
-        toast.info(`${params.name}`, {
-            description: `Value: ${params.value} (${params.percent}%)`
-        });
-    };
+    // Sort data by value descending and limit to top 10
+    const processedData = useMemo(() => {
+        return [...data]
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10)
+            .map(item => ({
+                ...item,
+                value: Math.round(item.value)
+            }));
+    }, [data]);
 
-    const options = {
+    const options = useMemo(() => ({
         backgroundColor: 'transparent',
-        title: {
-            text: title,
-            left: 'center',
-            textStyle: { color: isDark ? '#fff' : '#333' }
-        },
+        animation: true,
+        animationDuration: 800,
+        animationEasing: 'cubicOut',
         tooltip: {
             trigger: 'item',
-            formatter: '{b}: {c} ({d}%)',
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            borderColor: '#333',
-            textStyle: { color: '#fff' }
+            confine: true,
+            appendToBody: true,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            padding: [12, 16],
+            textStyle: { color: '#fff', fontSize: 12 },
+            formatter: (params: { name: string; value: number; percent: number }) => {
+                return `
+                    <div style="font-weight:600;margin-bottom:6px;">${params.name}</div>
+                    <div style="display:flex;justify-content:space-between;gap:16px;">
+                        <span>Value</span>
+                        <span style="font-weight:600;">$${params.value.toLocaleString()}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;gap:16px;">
+                        <span>Share</span>
+                        <span style="font-weight:600;">${params.percent.toFixed(1)}%</span>
+                    </div>
+                `;
+            }
         },
         legend: {
-            bottom: '5%',
+            type: 'scroll',
+            orient: 'horizontal',
+            bottom: 0,
             left: 'center',
-            textStyle: { color: isDark ? '#ccc' : '#666' }
+            textStyle: { color: isDark ? '#ccc' : '#666', fontSize: 11 },
+            itemWidth: 12,
+            itemHeight: 12,
+            itemGap: 8
         },
-        series: [
-            {
-                name: title,
-                type: 'pie',
-                radius: ['40%', '70%'],
-                avoidLabelOverlap: false,
-                itemStyle: {
-                    borderRadius: 10,
-                    borderColor: isDark ? '#1e293b' : '#fff',
-                    borderWidth: 2
-                },
+        color: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6'],
+        series: [{
+            name: title,
+            type: 'pie',
+            radius: ['45%', '75%'],
+            center: ['50%', '45%'],
+            avoidLabelOverlap: true,
+            itemStyle: {
+                borderRadius: 6,
+                borderColor: isDark ? '#1e293b' : '#fff',
+                borderWidth: 2
+            },
+            label: {
+                show: false,
+                position: 'center'
+            },
+            emphasis: {
+                scale: true,
+                scaleSize: 8,
                 label: {
-                    show: false,
-                    position: 'center'
+                    show: true,
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                    color: isDark ? '#fff' : '#333',
+                    formatter: '{b}\n{d}%'
                 },
-                emphasis: {
-                    label: {
-                        show: true,
-                        fontSize: 20,
-                        fontWeight: 'bold',
-                        color: isDark ? '#fff' : '#333'
-                    }
-                },
-                labelLine: {
-                    show: false
-                },
-                data: data
-            }
-        ]
-    };
+                itemStyle: {
+                    shadowBlur: 20,
+                    shadowColor: 'rgba(0,0,0,0.3)'
+                }
+            },
+            labelLine: { show: false },
+            data: processedData,
+            animationType: 'scale',
+            animationEasing: 'elasticOut',
+            animationDelay: (idx: number) => idx * 50
+        }]
+    }), [processedData, isDark, title]);
 
     return (
-        <Card className="h-full border-white/10 bg-white/5 backdrop-blur-sm">
+        <Card className="h-full border-border/40 bg-card/50 backdrop-blur-sm">
             <CardHeader className="pb-2">
-                <CardTitle className="text-white">{title}</CardTitle>
+                <CardTitle className="text-base font-semibold">{title}</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
                 <ReactECharts
                     option={options}
-                    style={{ height: '400px', width: '100%', minHeight: '300px' }}
-                    theme={isDark ? 'dark' : 'light'}
-                    opts={{ renderer: 'svg' }}
-                    onEvents={{
-                        'click': onChartClick
-                    }}
+                    style={{ height: '300px', width: '100%' }}
+                    opts={{ renderer: 'canvas' }}
                     notMerge={true}
+                    lazyUpdate={true}
                 />
             </CardContent>
         </Card>
     );
-}
+};

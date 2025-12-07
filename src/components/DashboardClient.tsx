@@ -123,10 +123,17 @@ export function DashboardClient({ data, meta }: DashboardProps) {
     );
 
     const customerScatter = useMemo(() => {
-        const custMap = new Map<string, { x: number, y: number, z: number, name: string, country: string }>();
+        const custMap = new Map<string, { x: number, y: number, z: number, name: string, country: string, gender: string }>();
         filteredData.forEach(r => {
             if (!custMap.has(r.customerId)) {
-                custMap.set(r.customerId, { x: 0, y: 0, z: 0, name: r.customerName, country: r.country });
+                custMap.set(r.customerId, {
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                    name: r.customerName,
+                    country: r.country,
+                    gender: r.gender || 'Unknown'
+                });
             }
             const rec = custMap.get(r.customerId)!;
             rec.x++;
@@ -232,18 +239,25 @@ export function DashboardClient({ data, meta }: DashboardProps) {
         show: {
             opacity: 1,
             transition: {
-                staggerChildren: 0.1
+                staggerChildren: 0.05
             }
         }
     };
 
     const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
-        show: { y: 0, opacity: 1 }
+        hidden: { y: 10, opacity: 0 },
+        show: {
+            y: 0,
+            opacity: 1,
+            transition: {
+                duration: 0.4,
+                ease: "easeOut" as const
+            }
+        }
     };
 
     return (
-        <div className="min-h-screen space-y-6 p-4 md:p-8 md:pt-6 pb-20 overflow-x-hidden">
+        <div className="w-full space-y-6 pb-20 overflow-x-hidden">
             {/* KPI Section */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard

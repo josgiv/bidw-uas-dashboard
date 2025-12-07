@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useDashboard } from "@/components/DashboardContext";
 import { DimensionField, MetricField } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
@@ -164,9 +165,10 @@ export const FilterSidebar = ({ counts }: FilterSidebarProps) => {
 
     return (
         <div
-            className={`fixed left-0 top-[64px] h-[calc(100vh-64px)] bg-white border-r border-border shadow-lg transition-all duration-300 z-30 ${isSidebarCollapsed ? "w-12" : "w-80"
-                }`}
-            style={{ backgroundColor: "#ffffff" }}
+            className={cn(
+                "fixed left-0 top-[64px] h-[calc(100vh-64px)] bg-white/95 backdrop-blur-md border-r border-border shadow-xl z-30 transition-all duration-300 ease-out",
+                isSidebarCollapsed ? "w-14" : "w-[320px]"
+            )}
         >
             {/* Collapse Toggle */}
             <Button
