@@ -3,7 +3,7 @@ import path from "path";
 import Papa from "papaparse";
 import { Sale, Product, Customer, DateRecord } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "..", "datasets");
+const DATA_DIR = path.join(process.cwd(), "public", "data");
 
 // Helper to read CSV with Stream
 async function readCSV<T>(filename: string): Promise<T[]> {
