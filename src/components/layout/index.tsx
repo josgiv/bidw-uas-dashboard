@@ -33,6 +33,7 @@ export const Navbar = () => {
                     <NavLink href="/dashboard" icon={<BarChart3 className="h-4 w-4" />} label="Overview" active={isActive("/dashboard")} />
                     <NavLink href="/sales" icon={<PieChart className="h-4 w-4" />} label="Sales" active={isActive("/sales")} />
                     <NavLink href="/customers" icon={<User className="h-4 w-4" />} label="Customers" active={isActive("/customers")} />
+                    <NavLink href="/kpi" icon={<BarChart3 className="h-4 w-4" />} label="KPI Analysis" active={isActive("/kpi")} />
                     <NavLink href="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" active={isActive("/settings")} />
                 </div>
 
